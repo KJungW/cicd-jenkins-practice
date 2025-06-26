@@ -2,12 +2,13 @@ pipeline {
     agent any
 
     environment {
-        JAR = "build/libs/my-app-0.0.1-SNAPSHOT.jar"
+        JAR = "build/libs/jenkins-0.0.1-SNAPSHOT.jar"
     }
 
     stages {
         stage('Build') {
             steps {
+                sh 'chmod +x ./gradlew'
                 sh './gradlew clean build -x test'
             }
         }
