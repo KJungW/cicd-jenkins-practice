@@ -10,4 +10,9 @@ public class HealthCheckController {
     public String checkHealth() {
         return "Connection OK!";
     }
+
+    @GetMapping("/version-check")
+    public String checkVersion() {
+        return "version 1";
+    }
 }
