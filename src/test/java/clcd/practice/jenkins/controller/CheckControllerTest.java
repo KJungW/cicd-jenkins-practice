@@ -5,13 +5,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-class HealthCheckControllerTest {
+class CheckControllerTest {
 
     @DisplayName("올바르게 헬스체크를 할 수 있다.")
     @Test
     void testMethodNameHere() {
         // given
-        HealthCheckController controller = new HealthCheckController();
+        CheckController controller = new CheckController("value1", "value2");
 
         // when
         String response = controller.checkHealth();

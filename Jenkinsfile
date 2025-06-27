@@ -2,26 +2,63 @@ pipeline {
     agent any
 
     environment {
-        JAR = "build/libs/jenkins-0.0.1-SNAPSHOT.jar"
+        IMAGE_NAME = "application-image"
+        CONTAINER_NAME = "application-container"
+        PORT = "8081"
     }
 
     stages {
-        stage('Build') {
+        // Stage : 빌드와 테스트
+        stage('Build & Test') {
             steps {
-                sh 'chmod +x ./gradlew'
-                sh './gradlew clean build -x test'
+                echo "Build and test start"
+                bat 'gradlew.bat clean build'
+                echo "Build and test complete"
             }
         }
 
-        stage('Test') {
+        // Stage : Docker 이미지 빌드
+        stage('Build Docker Image') {
             steps {
-                sh './gradlew test'
+                echo "Build Docker Image start"
+                bat "docker build -t %IMAGE_NAME% ."
+                echo "Build Docker Image complete"
             }
         }
 
-        stage('Run') {
+        // Stage :  배포
+        stage('Deploy') {
             steps {
-                sh 'nohup java -jar $JAR > app.log 2>&1 &'
+                withCredentials([
+                    string(credentialsId: 'SECRET_VALUE1', variable: 'SECRET_VALUE1'),
+                    string(credentialsId: 'SECRET_VALUE2', variable: 'SECRET_VALUE2')
+                ]) {
+                    echo "Try remove ${CONTAINER_NAME} Container"
+
+                    bat """
+                    docker ps -a --filter "name=%CONTAINER_NAME%" --format "{{.Names}}" | findstr /i "%CONTAINER_NAME%" >nul
+                    IF %ERRORLEVEL% EQU 0 (
+                        echo Stopping and removing existing container: %CONTAINER_NAME%
+                        docker stop %CONTAINER_NAME%
+                        docker rm %CONTAINER_NAME%
+                    ) ELSE (
+                        echo No existing container named %CONTAINER_NAME% found.
+                    )
+                    exit 0
+                    """
+
+                    bat """
+                    echo Starting new container: %CONTAINER_NAME% from image: %IMAGE_NAME%
+                    docker run -d ^
+                        -p %PORT%:%PORT% ^
+                        --name %CONTAINER_NAME% ^
+                        -e SECRET_VALUE1=%SECRET_VALUE1% ^
+                        -e SECRET_VALUE2=%SECRET_VALUE2% ^
+                        %IMAGE_NAME%
+                    """
+
+                    echo "Docker container ${CONTAINER_NAME} started."
+                }
             }
         }
     }
