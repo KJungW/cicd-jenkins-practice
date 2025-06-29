@@ -1,0 +1,86 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = "application-image"
+        CONTAINER_NAME = "application-container"
+        PORT = "8081"
+    }
+
+    stages {
+        // Stage : 빌드와 테스트
+        stage('Build & Test') {
+            steps {
+                withCredentials([
+                    file(credentialsId: 'PRODUCT_SECRET_FILE', variable: 'PRODUCT_SECRET_FILE_PATH'),
+                    file(credentialsId: 'TEST_SECRET_FILE', variable: 'TEST_SECRET_FILE_PATH')
+                ]) {
+                    echo "Build and test start"
+
+                    // 프로젝트에 프로덕션용 설정 파일 주입
+                    bat """
+                    setlocal
+                    echo Copying product config file
+                    set PRODUCT_CONFIG_FILE=%PRODUCT_SECRET_FILE_PATH%
+                    if not exist %WORKSPACE%\\src\\main\\resources mkdir src\\main\\resources
+                    copy "%PRODUCT_CONFIG_FILE%" %WORKSPACE%\\src\\main\\resources\\application.yaml
+                    endlocal
+                    """
+
+                    // 프로젝트에 테스트용 설정 파일 주입
+                    bat """
+                    setlocal
+                    echo Copying test config file
+                    set TEST_CONFIG_FILE=%TEST_SECRET_FILE_PATH%
+                    if not exist %WORKSPACE%\\src\\test\\resources mkdir src\\test\\resources
+                    copy "%TEST_CONFIG_FILE%" %WORKSPACE%\\src\\test\\resources\\application.yaml
+                    gradlew.bat clean build
+                    endlocal
+                    """
+
+                    // 빌드와 테스트 수행
+                    bat "gradlew.bat clean build"
+
+                    echo "Build and test complete"
+                }
+            }
+        }
+
+        // Stage : Docker 이미지 빌드
+        stage('Build Docker Image') {
+            steps {
+                echo "Build Docker Image start"
+                bat "docker build -t %IMAGE_NAME% -f %WORKSPACE%\\cicd\\Dockerfile %WORKSPACE%"
+                echo "Build Docker Image complete"
+            }
+        }
+
+        // Stage :  배포
+        stage('Deploy') {
+            steps {
+                echo "Try remove ${CONTAINER_NAME} Container"
+
+                bat """
+                docker ps -a --filter "name=%CONTAINER_NAME%" --format "{{.Names}}" | findstr /i "%CONTAINER_NAME%" >nul
+                IF %ERRORLEVEL% EQU 0 (
+                    echo Stopping and removing existing container: %CONTAINER_NAME%
+                    docker stop %CONTAINER_NAME%
+                    docker rm %CONTAINER_NAME%
+                ) ELSE (
+                    echo No existing container named %CONTAINER_NAME% found.
+                )
+                exit 0
+                """
+
+                bat """
+                docker run -d ^
+                    -p %PORT%:%PORT% ^
+                    --name %CONTAINER_NAME% ^
+                    %IMAGE_NAME% ^
+                """
+
+                echo "Docker container ${CONTAINER_NAME} started."
+            }
+        }
+    }
+}
