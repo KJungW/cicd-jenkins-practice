@@ -35,7 +35,3 @@ out/
 
 ### VS Code ###
 .vscode/
-
-### Configuration ###
-/src/main/resources/application*
-/src/test/resources/application*

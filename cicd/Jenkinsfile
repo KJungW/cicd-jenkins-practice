@@ -5,44 +5,18 @@ pipeline {
         IMAGE_NAME = "application-image"
         CONTAINER_NAME = "application-container"
         PORT = "8081"
+
+        // 결과 메일을 전송할 메일을 Credential로 제공 (ex.'test1@test.com', 'test2@test.com')
+        EMAIL_SEND_ADDRESS = credentials('EMAIL_SEND_ADDRESS')
     }
 
     stages {
         // Stage : 빌드와 테스트
         stage('Build & Test') {
-            steps {
-                withCredentials([
-                    file(credentialsId: 'PRODUCT_SECRET_FILE', variable: 'PRODUCT_SECRET_FILE_PATH'),
-                    file(credentialsId: 'TEST_SECRET_FILE', variable: 'TEST_SECRET_FILE_PATH')
-                ]) {
-                    echo "Build and test start"
-
-                    // 프로젝트에 프로덕션용 설정 파일 주입
-                    bat """
-                    setlocal
-                    echo Copying product config file
-                    set PRODUCT_CONFIG_FILE=%PRODUCT_SECRET_FILE_PATH%
-                    if not exist %WORKSPACE%\\src\\main\\resources mkdir src\\main\\resources
-                    copy "%PRODUCT_CONFIG_FILE%" %WORKSPACE%\\src\\main\\resources\\application.yaml
-                    endlocal
-                    """
-
-                    // 프로젝트에 테스트용 설정 파일 주입
-                    bat """
-                    setlocal
-                    echo Copying test config file
-                    set TEST_CONFIG_FILE=%TEST_SECRET_FILE_PATH%
-                    if not exist %WORKSPACE%\\src\\test\\resources mkdir src\\test\\resources
-                    copy "%TEST_CONFIG_FILE%" %WORKSPACE%\\src\\test\\resources\\application.yaml
-                    gradlew.bat clean build
-                    endlocal
-                    """
-
-                    // 빌드와 테스트 수행
-                    bat "gradlew.bat clean build"
-
-                    echo "Build and test complete"
-                }
+            steps  {
+                echo "Build and test start"
+                bat "gradlew.bat clean build"
+                echo "Build and test complete"
             }
         }
 
@@ -80,6 +54,20 @@ pipeline {
                 """
 
                 echo "Docker container ${CONTAINER_NAME} started."
+            }
+
+            // 결과를 이메일로 전송
+            post {
+                success { // 성공 메일 전송
+                    mail to: "${env.EMAIL_SEND_ADDRESS}",
+                    subject: "빌드 성공: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                    body: "빌드가 성공적으로 완료되었습니다!\n프로젝트: ${env.JOB_NAME}\n빌드 번호: ${env.BUILD_NUMBER}\n빌드 URL: ${env.BUILD_URL}"
+                }
+                failure { // 실패 메일 전송
+                    mail to: "${env.EMAIL_SEND_ADDRESS}",
+                    subject: "빌드 실패: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                    body: "빌드가 실패했습니다!\n프로젝트: ${env.JOB_NAME}\n빌드 번호: ${env.BUILD_NUMBER}\n빌드 URL: ${env.BUILD_URL}\n\n빌드 로그를 확인해주세요."
+                }
             }
         }
     }

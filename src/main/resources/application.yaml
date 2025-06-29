@@ -1,0 +1,10 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: jenkins
+
+custom:
+  secret_value1: secret-value1
+  secret_value2: secret-value2
