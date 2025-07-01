@@ -17,6 +17,6 @@ class CheckControllerTest {
         String response = controller.checkHealth();
 
         // then
-        assertThat(response).isEqualTo("Test Fail!");
+        assertThat(response).isEqualTo("Connection OK!");
     }
 }
