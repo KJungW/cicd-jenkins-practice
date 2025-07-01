@@ -1,0 +1,35 @@
+# 워크플로우 이름 지정
+name: Run Tests
+
+# 워크플로우가 실행되는 경우 지정
+on: [ push, pull_request ]
+
+# job들을 정의
+jobs:
+  # "test" job 정의
+  test:
+
+    # 현재 job을 실행할 환경 설정
+    # (현재는 최신버전의 우분투를 통해 job 실행)
+    runs-on: ubuntu-latest
+
+    # job에서 실행할 step들을 정의
+    steps:
+      # step : 레파지토리에서 코드 가져오기
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # step : 현재 환경에 자바 21 설치
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # step : 파일 권한 부여
+      - name: Add permission to ./gradlew
+        run: chmod +x ./gradlew
+
+      # step : 테스트 수행
+      - name: Run tests
+        run: ./gradlew test
