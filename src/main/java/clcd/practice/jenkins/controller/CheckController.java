@@ -25,7 +25,7 @@ public class CheckController {
 
     @GetMapping("/version-check")
     public String checkVersion() {
-        return "version 3";
+        return "version 4";
     }
 
     @GetMapping("/credential-check")
